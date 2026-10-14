@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rolling Circles: CRT</title>
+<meta name="description" content="An interactive picture of the Chinese Remainder Theorem: circles whose circumference equals the modulus roll along a number line, and the answer is where they all line up.">
+<meta name="author" content="Martin Gregory Sendrowicz">
+<style>
+  :root {
+    --bg: #fbf8ef;
+    --paper: #fffdf6;
+    --ink: #1f2328;
+    --muted: #5d636b;
+    --rule: #e4dfd0;
+    --line: #2b2f36;
+    --accent: #b5562a;
+    --c1: #2f6db5;
+    --c2: #7a3fb0;
+    --c3: #1f8a70;
+    --c4: #b5832a;
+    --match: #5f9e4f;
+    --match-soft: rgba(95, 158, 79, 0.18);
+    --formula: #c0392b;
+    --shadow: 0 1px 2px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171b;
+      --paper: #1c1f24;
+      --ink: #e8e6e1;
+      --muted: #a3a8b0;
+      --rule: #2c3038;
+      --line: #c9ccd2;
+      --accent: #e08455;
+      --c1: #6aa5ee;
+      --c2: #b98ae6;
+      --c3: #4fc3a1;
+      --c4: #e0b35a;
+      --match: #8cc97a;
+      --match-soft: rgba(140, 201, 122, 0.18);
+      --formula: #f07a6a;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171b;
+    --paper: #1c1f24;
+    --ink: #e8e6e1;
+    --muted: #a3a8b0;
+    --rule: #2c3038;
+    --line: #c9ccd2;
+    --accent: #e08455;
+    --c1: #6aa5ee;
+    --c2: #b98ae6;
+    --c3: #4fc3a1;
+    --c4: #e0b35a;
+    --match: #8cc97a;
+    --match-soft: rgba(140, 201, 122, 0.18);
+    --formula: #f07a6a;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  header.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  h1 { font-size: clamp(1.7rem, 4vw, 2.5rem); line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 48px 0 12px; }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  p { margin: 0 0 12px; }
+  .lede { font-size: 1.12rem; color: var(--muted); max-width: 46em; }
+  .byline { color: var(--muted); font-size: 0.95rem; margin-top: 4px; }
+  .byline a { color: var(--accent); }
+  .theme-btn {
+    border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
+    border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 0.85rem; cursor: pointer; white-space: nowrap;
+  }
+  .card { background: var(--paper); border: 1px solid var(--rule); border-radius: 14px; box-shadow: var(--shadow); padding: 18px; }
+  .stage { padding: 12px 12px 6px; }
+  svg { display: block; width: 100%; height: auto; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 14px; }
+  .controls button {
+    border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 8px;
+    padding: 7px 12px; font: inherit; font-size: 0.92rem; cursor: pointer; min-width: 44px;
+  }
+  .controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .controls label { font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .xval { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 5.5em; text-align: right; }
+  .status { margin-top: 10px; min-height: 1.6em; font-weight: 600; }
+  .status.ok { color: var(--match); }
+  .congruences { display: grid; gap: 8px; margin-top: 6px; }
+  .cong { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 1.05rem; }
+  .cong .swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .cong input {
+    width: 3.6em; padding: 4px 6px; font: inherit; border: 1px solid var(--rule); border-radius: 6px;
+    background: var(--bg); color: var(--ink); text-align: center;
+  }
+  .cong button { border: none; background: none; color: var(--muted); cursor: pointer; font: inherit; padding: 2px 6px; }
+  .row-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .row-actions button {
+    border: 1px dashed var(--rule); background: transparent; color: var(--ink); border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 0.9rem; cursor: pointer;
+  }
+  .error { color: var(--formula); font-size: 0.92rem; margin-top: 8px; min-height: 1.2em; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid2 > * { min-width: 0; }
+  .card { min-width: 0; overflow-x: auto; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  table.rot { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+  table.rot th, table.rot td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--rule); }
+  table.rot th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+  .math { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 1.06rem; }
+  .steps { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.9rem; line-height: 1.75; overflow-x: auto; white-space: pre; }
+  .boxed {
+    border: 2px solid var(--formula); border-radius: 10px; padding: 14px 18px; display: inline-block; color: var(--formula);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 1.25rem; line-height: 1.9;
+  }
+  .note { color: var(--muted); font-size: 0.95rem; }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--rule); display: block; }
+  figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 8px; }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.9rem; }
+  footer a { color: var(--accent); }
+  .phase-wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+  .phase-wrap figure { width: 170px; text-align: center; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <h1>Rolling Circles: a picture of the Chinese Remainder Theorem</h1>
+      <p class="byline">Martin Gregory Sendrowicz · idea from spring 2016 · <a href="https://www.linkedin.com/in/martin-gregory">LinkedIn</a> · <a href="https://github.com/MartinGregory">GitHub</a></p>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light and dark theme">Theme</button>
+  </header>
+
+  <p class="lede">Give every modulus its own wheel, and make each wheel's circumference equal to its modulus. Roll all the wheels along the same number line. The Chinese Remainder Theorem asks for a spot where every wheel touches the ground at the number you asked for. That spot is the answer.</p>
+
+  <section aria-labelledby="play">
+    <h2 id="play">Roll the wheels</h2>
+    <div class="card stage">
+      <svg id="lanes" viewBox="0 0 900 520" role="img" aria-label="Wheels rolling along number lines"></svg>
+      <div class="slider-row">
+        <label for="xSlider" class="sr-only">Position x</label>
+        <input id="xSlider" type="range" min="0" max="60" step="1" value="0">
+        <span class="xval" id="xLabel">x = 0</span>
+      </div>
+      <div class="controls">
+        <button class="primary" id="playBtn" type="button">Play</button>
+        <button id="backBtn" type="button" aria-label="Step back one">−1</button>
+        <button id="fwdBtn" type="button" aria-label="Step forward one">+1</button>
+        <button id="solveBtn" type="button">Jump to the answer</button>
+        <button id="resetBtn" type="button">Reset</button>
+        <label><input type="checkbox" id="stopAt" checked> stop where they line up</label>
+        <label>speed <input type="range" id="speed" min="0.5" max="8" step="0.5" value="2" style="width:90px"></label>
+      </div>
+      <div class="status" id="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="setup">
+    <h2 id="setup">Choose the puzzle</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">Find x such that</h3>
+        <div class="congruences" id="congs"></div>
+        <div class="row-actions">
+          <button id="addBtn" type="button">+ add a wheel</button>
+          <button id="exampleBtn" type="button">Back to my 2016 example</button>
+        </div>
+        <div class="error" id="err"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">How far has each wheel turned?</h3>
+        <table class="rot" id="rotTable"></table>
+        <p class="note" style="margin-top:10px">A wheel with circumference n that has rolled to x has turned x ÷ n times. The leftover fraction tells you which mark is touching the ground.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="formulas">
+    <h2 id="formulas">The two formulas from my notes</h2>
+    <div class="grid2">
+      <div>
+        <div class="boxed">r = n ⁄ 2π<br>x = n · R</div>
+      </div>
+      <div>
+        <p><strong>r = n ⁄ 2π.</strong> A wheel for "mod n" needs a circumference of exactly n units, so one full turn covers one full cycle of remainders. Circumference is 2πr, so the radius is n ⁄ 2π.</p>
+        <p><strong>x = n · R.</strong> If the wheel has turned R times, it has rolled R circumferences, so it sits at x = n · R. For the answer 8: the mod 2 wheel turns 4 times, the mod 3 wheel 2⅔ times, and the mod 5 wheel 1⅗ times, and 2·4 = 3·2⅔ = 5·1⅗ = 8.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="algebra">
+    <h2 id="algebra">The same answer, by algebra</h2>
+    <p>The wheels show you where the answer is. The standard construction computes it. These steps update with the puzzle above.</p>
+    <div class="card"><div class="steps" id="steps"></div></div>
+  </section>
+
+  <section aria-labelledby="phases">
+    <h2 id="phases">Another view: phases</h2>
+    <p>Cut a circle into n equal slices, like a pizza. The slice edges sit at 0/n, 1/n, …, (n−1)/n of a full turn, and after n/n you are back at the start. Those fractions, called phases, behave exactly like the remainders 0, 1, …, n−1 mod n. Each dot below is a wheel's current phase.</p>
+    <div class="card"><div class="phase-wrap" id="phaseWrap"></div></div>
+    <p class="note" style="margin-top:12px">This link between turning and remainders is old and deep. Gauss worked with it in the early 1800s through the points on a circle that solve xⁿ = 1, and the same idea of reading phases is what lets a quantum computer factor numbers with Shor's algorithm.</p>
+  </section>
+
+  <section aria-labelledby="origin">
+    <h2 id="origin">Where this came from</h2>
+    <p>I drew this one morning in spring 2016, as an undergraduate taking a course that covered the Chinese Remainder Theorem. Nobody showed it to me; I was trying to see why the theorem works instead of only following the formula. When I brought it to my professor, I learned that the connection between rotation and modular arithmetic goes back to Gauss. So I had rediscovered something classical, in my own form: wheels whose circumference is the modulus, rolling on a shared number line.</p>
+    <p>Here are the original notes. The green bars mark where the three wheels line up at 8 and again at 38, and the red box holds the two formulas above.</p>
+    <figure>
+      <img src="assets/original-notes-2016.jpg" alt="Hand-drawn notes: three circles labeled mod 2, mod 3 and mod 5 rolling along number lines, green bars where they line up at 8 and 38, the CRT computation, and a boxed formula relating the modulus to the radius and the number of rotations." loading="lazy">
+      <figcaption>My notes, spring 2016.</figcaption>
+    </figure>
+  </section>
+
+  <footer>
+    <p>Built by Martin Gregory Sendrowicz. One self-contained HTML file with no libraries. <a href="https://github.com/the-martin-gregory/rolling-circles">Source on GitHub</a>.</p>
+  </footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var COLORS = ["--c1", "--c2", "--c3", "--c4"];
+  var EXAMPLE = [{ a: 0, m: 2 }, { a: 2, m: 3 }, { a: 3, m: 5 }];
+  var MAX_WHEELS = 4;
+  var MAX_MOD = 13;
+  var MAX_PRODUCT = 3000;
+
+  var state = {
+    congs: EXAMPLE.map(function (c) { return { a: c.a, m: c.m }; }),
+    x: 0,
+    playing: false,
+    last: 0
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var svg = $("lanes");
+  var NS = "http://www.w3.org/2000/svg";
+
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function mod(a, n) { return ((a % n) + n) % n; }
+  function gcd(a, b) { while (b) { var t = b; b = a % b; a = t; } return Math.abs(a); }
+  function inverse(a, n) {
+    // Extended Euclid: returns y with a*y = 1 (mod n)
+    var r0 = n, r1 = mod(a, n), t0 = 0, t1 = 1;
+    while (r1 !== 0) {
+      var q = Math.floor(r0 / r1);
+      var r2 = r0 - q * r1; r0 = r1; r1 = r2;
+      var t2 = t0 - q * t1; t0 = t1; t1 = t2;
+    }
+    return r0 === 1 ? mod(t0, n) : null;
+  }
+
+  function validate() {
+    var cs = state.congs;
+    for (var i = 0; i < cs.length; i++) {
+      var c = cs[i];
+      if (!Number.isInteger(c.m) || c.m < 2 || c.m > MAX_MOD) return "Each modulus must be a whole number from 2 to " + MAX_MOD + ".";
+      if (!Number.isInteger(c.a) || c.a < 0 || c.a >= c.m) return "Each remainder must be between 0 and its modulus minus 1.";
+    }
+    for (i = 0; i < cs.length; i++) {
+      for (var j = i + 1; j < cs.length; j++) {
+        var g = gcd(cs[i].m, cs[j].m);
+        if (g !== 1) return "The moduli " + cs[i].m + " and " + cs[j].m + " share the factor " + g + ". The theorem needs pairwise relatively prime moduli.";
+      }
+    }
+    if (product() > MAX_PRODUCT) return "The product of the moduli is too large to animate (keep it under " + MAX_PRODUCT + ").";
+    return null;
+  }
+
+  function product() { return state.congs.reduce(function (p, c) { return p * c.m; }, 1); }
+
+  function solve() {
+    var M = product();
+    var parts = state.congs.map(function (c) {
+      var Mi = M / c.m;
+      var yi = inverse(Mi, c.m);
+      return { a: c.a, m: c.m, Mi: Mi, yi: yi };
+    });
+    var raw = parts.reduce(function (s, p) { return s + p.a * p.Mi * p.yi; }, 0);
+    return { M: M, parts: parts, raw: raw, x: mod(raw, M) };
+  }
+
+  function el(name, attrs, text) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function aligned(xInt) {
+    return state.congs.every(function (c) { return mod(xInt, c.m) === c.a; });
+  }
+
+  function mixed(x, m) {
+    var whole = Math.floor(x / m), rem = mod(x, m);
+    if (rem === 0) return String(whole);
+    var g = gcd(rem, m);
+    var frac = (rem / g) + "/" + (m / g);
+    return whole === 0 ? frac : whole + " " + frac;
+  }
+
+  // ---- drawing the rolling lanes ----
+  function draw() {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var W = Math.round(Math.max(320, Math.min(900, svg.getBoundingClientRect().width || 900)));
+    var unit = W < 600 ? 64 : 84, cx = W / 2, x = state.x;
+    var xInt = Math.round(x), onInt = Math.abs(x - xInt) < 1e-6;
+    var line = css("--line"), muted = css("--muted"), match = css("--match"), ink = css("--ink");
+    var top = 18, laneGap = 26, y = top;
+    var lanes = [];
+
+    state.congs.forEach(function (c, i) {
+      var r = (c.m / (2 * Math.PI)) * unit;
+      var base = y + 2 * r + (r < 34 ? 24 : 12);
+      lanes.push({ c: c, r: r, base: base, color: css(COLORS[i]) });
+      y = base + laneGap + 18;
+    });
+    var intBase = y + 16;
+    var H = intBase + 46;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+
+    var isMatch = onInt && aligned(xInt);
+    if (isMatch) {
+      svg.appendChild(el("rect", { x: cx - 16, y: 6, width: 32, height: intBase + 6, rx: 10, fill: css("--match-soft"), stroke: match, "stroke-width": 3 }));
+    }
+
+    var lo = Math.floor(x - cx / unit) - 1, hi = Math.ceil(x + cx / unit) + 1;
+
+    lanes.forEach(function (L, i) {
+      var c = L.c;
+      svg.appendChild(el("text", { x: 8, y: L.base - L.r * 2 - 2, fill: L.color, "font-size": 15, "font-weight": 700 }, "mod " + c.m));
+      svg.appendChild(el("line", { x1: 0, y1: L.base, x2: W, y2: L.base, stroke: line, "stroke-width": 1.5 }));
+      for (var n = lo; n <= hi; n++) {
+        if (n < 0) continue;
+        var tx = cx + (n - x) * unit;
+        var res = mod(n, c.m);
+        var isTarget = res === c.a;
+        svg.appendChild(el("line", { x1: tx, y1: L.base - 5, x2: tx, y2: L.base + 5, stroke: line, "stroke-width": 1.2 }));
+        svg.appendChild(el("text", {
+          x: tx, y: L.base + 21, "text-anchor": "middle", "font-size": isTarget ? 15 : 13,
+          "font-weight": isTarget ? 700 : 400, fill: isTarget ? match : muted
+        }, String(res)));
+      }
+      // the wheel
+      var ccx = cx, ccy = L.base - L.r;
+      svg.appendChild(el("circle", { cx: ccx, cy: ccy, r: L.r, fill: "none", stroke: L.color, "stroke-width": 2.5 }));
+      for (var k = 0; k < c.m; k++) {
+        var alpha = 2 * Math.PI * (k - x) / c.m;
+        var px = ccx + L.r * Math.sin(alpha), py = ccy + L.r * Math.cos(alpha);
+        var labelR = L.r >= 34 ? L.r - 13 : L.r + 11;
+        var lx = ccx + labelR * Math.sin(alpha), ly = ccy + labelR * Math.cos(alpha);
+        var nearGround = Math.cos(alpha) > 0.92;
+        svg.appendChild(el("circle", { cx: px, cy: py, r: nearGround ? 4 : 2.8, fill: L.color }));
+        if (!(nearGround && L.r < 34)) {
+          svg.appendChild(el("text", { x: lx, y: ly + 4, "text-anchor": "middle", "font-size": 12, "font-weight": nearGround ? 700 : 400, fill: ink }, String(k)));
+        }
+      }
+      // the spoke points at the mark that will touch the ground at x = 0 (mark 0)
+      var a0 = 2 * Math.PI * (0 - x) / c.m;
+      svg.appendChild(el("line", { x1: ccx, y1: ccy, x2: ccx + L.r * Math.sin(a0), y2: ccy + L.r * Math.cos(a0), stroke: L.color, "stroke-width": 1.5, opacity: 0.7 }));
+      svg.appendChild(el("circle", { cx: ccx, cy: ccy, r: 2.5, fill: L.color }));
+    });
+
+    // the shared integer number line
+    var accent = css("--accent");
+    svg.appendChild(el("line", { x1: 0, y1: intBase, x2: W, y2: intBase, stroke: accent, "stroke-width": 3 }));
+    var sol = validate() ? null : solve();
+    for (var n = lo; n <= hi; n++) {
+      if (n < 0) continue;
+      var tx = cx + (n - x) * unit;
+      var isSol = sol && mod(n - sol.x, sol.M) === 0;
+      svg.appendChild(el("line", { x1: tx, y1: intBase - 7, x2: tx, y2: intBase + 7, stroke: accent, "stroke-width": 1.5 }));
+      if (isSol) svg.appendChild(el("circle", { cx: tx, cy: intBase + 25, r: 14, fill: "none", stroke: match, "stroke-width": 3 }));
+      svg.appendChild(el("text", { x: tx, y: intBase + 30, "text-anchor": "middle", "font-size": 14, fill: accent, "font-weight": 600 }, String(n)));
+    }
+    svg.appendChild(el("path", { d: "M" + cx + " " + (intBase - 12) + " l-7 -10 h14 z", fill: ink }));
+  }
+
+  // ---- side panels ----
+  function renderRotations() {
+    var x = Math.round(state.x);
+    var html = "<tr><th>wheel</th><th>radius n/2π</th><th>turns R = x/n</th><th>touching</th></tr>";
+    state.congs.forEach(function (c, i) {
+      var touch = mod(x, c.m);
+      var ok = touch === c.a;
+      html += "<tr><td style=\"color:var(" + COLORS[i] + ");font-weight:700\">mod " + c.m + "</td>" +
+        "<td>" + (c.m / (2 * Math.PI)).toFixed(3) + "</td>" +
+        "<td>" + mixed(x, c.m) + "</td>" +
+        "<td>" + touch + (ok ? " ✓" : "") + "</td></tr>";
+    });
+    $("rotTable").innerHTML = html;
+  }
+
+  function renderSteps() {
+    var err = validate();
+    if (err) { $("steps").textContent = err; return; }
+    var s = solve();
+    var lines = [];
+    var ms = state.congs.map(function (c) { return c.m; });
+    lines.push("m  = " + ms.join(" · ") + " = " + s.M);
+    s.parts.forEach(function (p, i) {
+      var k = i + 1;
+      lines.push("M" + k + " = " + s.M + " / " + p.m + " = " + p.Mi +
+        "      find y" + k + ":  " + p.Mi + " · y" + k + " ≡ 1 (mod " + p.m + ")   →   y" + k + " = " + p.yi);
+    });
+    lines.push("");
+    lines.push("x  = " + s.parts.map(function (p) { return p.a + "·" + p.Mi + "·" + p.yi; }).join(" + "));
+    lines.push("   = " + s.parts.map(function (p) { return p.a * p.Mi * p.yi; }).join(" + ") + " = " + s.raw);
+    lines.push("x mod m:  " + s.raw + " mod " + s.M + " = " + s.x);
+    lines.push("");
+    lines.push("check:  " + state.congs.map(function (c) { return s.x + " ≡ " + mod(s.x, c.m) + " (mod " + c.m + ")"; }).join("    "));
+    $("steps").textContent = lines.join("\n");
+  }
+
+  function renderPhases() {
+    var wrap = $("phaseWrap");
+    wrap.innerHTML = "";
+    var x = state.x;
+    state.congs.forEach(function (c, i) {
+      var color = css(COLORS[i]), line = css("--line"), ink = css("--ink");
+      var fig = document.createElement("figure");
+      var s = el("svg", { viewBox: "0 0 160 160", role: "img", "aria-label": "Phase circle for mod " + c.m });
+      var R = 58, ox = 80, oy = 80;
+      s.appendChild(el("circle", { cx: ox, cy: oy, r: R, fill: "none", stroke: line, "stroke-width": 1.5 }));
+      for (var k = 0; k < c.m; k++) {
+        var t = 2 * Math.PI * k / c.m - Math.PI / 2;
+        s.appendChild(el("line", { x1: ox, y1: oy, x2: ox + R * Math.cos(t), y2: oy + R * Math.sin(t), stroke: line, "stroke-width": 0.6, opacity: 0.5 }));
+        s.appendChild(el("text", { x: ox + (R + 13) * Math.cos(t), y: oy + (R + 13) * Math.sin(t) + 4, "text-anchor": "middle", "font-size": 11, fill: k === c.a ? css("--match") : ink, "font-weight": k === c.a ? 700 : 400 }, k + "/" + c.m));
+      }
+      var ph = 2 * Math.PI * (x / c.m) - Math.PI / 2;
+      s.appendChild(el("line", { x1: ox, y1: oy, x2: ox + R * Math.cos(ph), y2: oy + R * Math.sin(ph), stroke: color, "stroke-width": 2.5 }));
+      s.appendChild(el("circle", { cx: ox + R * Math.cos(ph), cy: oy + R * Math.sin(ph), r: 6, fill: color }));
+      fig.appendChild(s);
+      var cap = document.createElement("figcaption");
+      cap.innerHTML = "<strong style=\"color:var(" + COLORS[i] + ")\">mod " + c.m + "</strong>: phase " + mod(Math.round(x), c.m) + "/" + c.m;
+      fig.appendChild(cap);
+      wrap.appendChild(fig);
+    });
+  }
+
+  function renderCongs() {
+    var box = $("congs");
+    box.innerHTML = "";
+    state.congs.forEach(function (c, i) {
+      var row = document.createElement("div");
+      row.className = "cong math";
+      row.innerHTML = "<span class=\"swatch\" style=\"background:var(" + COLORS[i] + ")\"></span>x ≡ " +
+        "<input type=\"number\" min=\"0\" aria-label=\"remainder " + (i + 1) + "\" value=\"" + c.a + "\" data-i=\"" + i + "\" data-k=\"a\"> (mod " +
+        "<input type=\"number\" min=\"2\" max=\"" + MAX_MOD + "\" aria-label=\"modulus " + (i + 1) + "\" value=\"" + c.m + "\" data-i=\"" + i + "\" data-k=\"m\">)" +
+        (state.congs.length > 2 ? " <button type=\"button\" data-del=\"" + i + "\" aria-label=\"remove wheel " + (i + 1) + "\">✕</button>" : "");
+      box.appendChild(row);
+    });
+    $("addBtn").disabled = state.congs.length >= MAX_WHEELS;
+  }
+
+  function updateAll() {
+    var err = validate();
+    $("err").textContent = err || "";
+    var M = err ? 60 : product();
+    var slider = $("xSlider");
+    slider.max = String(Math.max(2 * M + 10, 30));
+    if (state.x > Number(slider.max)) state.x = Number(slider.max);
+    slider.value = String(Math.round(state.x));
+    var xi = Math.round(state.x);
+    $("xLabel").textContent = "x = " + (Math.abs(state.x - xi) < 1e-6 ? xi : state.x.toFixed(2));
+    var st = $("status");
+    if (!err && Math.abs(state.x - xi) < 1e-6 && aligned(xi)) {
+      st.textContent = "All wheels line up at x = " + xi + ".";
+      st.className = "status ok";
+    } else if (err) {
+      st.textContent = ""; st.className = "status";
+    } else {
+      var s = solve();
+      st.textContent = "Rolling… the wheels line up at " + s.x + ", then every " + s.M + " after that.";
+      st.className = "status";
+    }
+    draw();
+    renderRotations();
+    renderPhases();
+  }
+
+  // ---- animation ----
+  function tick(t) {
+    if (!state.playing) return;
+    var dt = state.last ? (t - state.last) / 1000 : 0;
+    state.last = t;
+    var speed = Number($("speed").value);
+    var next = state.x + speed * dt;
+    var max = Number($("xSlider").max);
+    if ($("stopAt").checked && !validate()) {
+      var s = solve();
+      var target = s.x + Math.ceil((state.x + 1e-6 - s.x) / s.M) * s.M;
+      if (target <= state.x + 1e-6) target += s.M;
+      if (next >= target) { state.x = target; stop(); updateAll(); return; }
+    }
+    if (next >= max) { state.x = max; stop(); updateAll(); return; }
+    state.x = next;
+    updateAll();
+    requestAnimationFrame(tick);
+  }
+  function play() {
+    if (validate()) return;
+    if (state.x >= Number($("xSlider").max)) state.x = 0;
+    state.playing = true; state.last = 0;
+    $("playBtn").textContent = "Pause";
+    requestAnimationFrame(tick);
+  }
+  function stop() { state.playing = false; $("playBtn").textContent = "Play"; }
+
+  // ---- events ----
+  $("playBtn").addEventListener("click", function () { state.playing ? stop() : play(); });
+  $("fwdBtn").addEventListener("click", function () { stop(); state.x = Math.round(state.x) + 1; updateAll(); });
+  $("backBtn").addEventListener("click", function () { stop(); state.x = Math.max(0, Math.round(state.x) - 1); updateAll(); });
+  $("resetBtn").addEventListener("click", function () { stop(); state.x = 0; updateAll(); });
+  $("solveBtn").addEventListener("click", function () {
+    if (validate()) return;
+    stop();
+    var s = solve();
+    var next = s.x + Math.ceil((Math.round(state.x) + 1 - s.x) / s.M) * s.M;
+    state.x = Math.round(state.x) === s.x ? s.x + s.M : (Math.round(state.x) < s.x ? s.x : next);
+    updateAll();
+  });
+  $("xSlider").addEventListener("input", function (e) { stop(); state.x = Number(e.target.value); updateAll(); });
+  $("congs").addEventListener("input", function (e) {
+    var t = e.target;
+    if (!t.dataset || t.dataset.i === undefined) return;
+    state.congs[Number(t.dataset.i)][t.dataset.k] = Number(t.value);
+    stop();
+    renderSteps();
+    updateAll();
+  });
+  $("congs").addEventListener("click", function (e) {
+    var d = e.target.dataset && e.target.dataset.del;
+    if (d === undefined) return;
+    state.congs.splice(Number(d), 1);
+    renderCongs(); renderSteps(); updateAll();
+  });
+  $("addBtn").addEventListener("click", function () {
+    if (state.congs.length >= MAX_WHEELS) return;
+    var used = state.congs.map(function (c) { return c.m; });
+    var candidates = [7, 11, 13, 4, 9, 8];
+    var m = candidates.find(function (n) { return used.every(function (u) { return gcd(u, n) === 1; }); }) || 7;
+    state.congs.push({ a: 1, m: m });
+    stop(); renderCongs(); renderSteps(); updateAll();
+  });
+  $("exampleBtn").addEventListener("click", function () {
+    stop();
+    state.congs = EXAMPLE.map(function (c) { return { a: c.a, m: c.m }; });
+    state.x = 0;
+    renderCongs(); renderSteps(); updateAll();
+  });
+
+  // theme toggle: remembered per browser when storage is available
+  var root = document.documentElement;
+  try { var saved = localStorage.getItem("crt-theme"); if (saved) root.setAttribute("data-theme", saved); } catch (e) {}
+  $("themeBtn").addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("crt-theme", next); } catch (e) {}
+    updateAll();
+  });
+  if (window.matchMedia) {
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateAll);
+  }
+
+  // optional start position, e.g. index.html?x=8
+  var params = new URLSearchParams(location.search);
+  if (params.get("theme") === "light" || params.get("theme") === "dark") root.setAttribute("data-theme", params.get("theme"));
+  var q = params.get("x");
+  if (q !== null && !isNaN(Number(q))) state.x = Math.max(0, Number(q));
+
+  window.addEventListener("resize", function () { if (!state.playing) updateAll(); });
+
+  renderCongs();
+  renderSteps();
+  updateAll();
+})();
+</script>
+</body>
+</html>
